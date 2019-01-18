@@ -2,9 +2,9 @@
 
 namespace rdx\transloader;
 
-use Illuminate\Translation\TranslationServiceProvider;
+use Illuminate\Translation\TranslationServiceProvider as BaseProvider;
 
-class Provider extends TranslationServiceProvider {
+class TranslationServiceProvider extends BaseProvider {
 
 	protected $defer = false;
 
@@ -35,8 +35,15 @@ class Provider extends TranslationServiceProvider {
 		$this->commands([
 			SyncCommand::class,
 		]);
+	}
 
-		// @todo Publish migration
+	/**
+	 *
+	 */
+	public function boot() {
+		$this->publishes([
+			__DIR__ . '/../migrations/' => database_path('migrations'),
+		], 'migrations');
 	}
 
 	/**
