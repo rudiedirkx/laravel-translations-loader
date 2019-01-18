@@ -5,7 +5,7 @@ namespace rdx\transloader;
 use Illuminate\Contracts\Translation\Loader as LoaderContract;
 use Illuminate\Database\Connection;
 
-class Loader implements LoaderContract {
+class TranslationsLoader implements LoaderContract {
 
 	protected $db;
 

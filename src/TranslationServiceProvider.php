@@ -13,7 +13,7 @@ class TranslationServiceProvider extends BaseProvider {
 	 */
 	public function register() {
 		$this->app->instance('translator.class', Translator::class);
-		$this->app->instance('translation.loader.class', Loader::class);
+		$this->app->instance('translation.loader.class', TranslationsLoader::class);
 
 		$this->registerLoader();
 
@@ -54,6 +54,8 @@ class TranslationServiceProvider extends BaseProvider {
 			$class = $app['translation.loader.class'];
 			return new $class($app['db.connection']);
 		});
+
+		$this->app->alias('translation.loader', TranslationsLoader::class);
 	}
 
 	public function provides() {

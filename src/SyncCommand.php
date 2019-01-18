@@ -11,9 +11,7 @@ class SyncCommand extends Command {
 	';
 	protected $description = 'Sync translations to db';
 
-	public function handle() {
-		$loader = $this->laravel['translation.loader'];
-
+	public function handle(TranslationsLoader $loader) {
 		$clear = $this->option('clear');
 		if ($clear) {
 			$loader->clear();
