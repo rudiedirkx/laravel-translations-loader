@@ -60,10 +60,17 @@ class TranslationsLoader implements LoaderContract {
 	}
 
 	protected function path($locale) {
+		$locale = basename($locale);
 		return storage_path("framework/trans/$locale.php");
 	}
 
-	protected function locales() {
+	protected function cachedLocales() {
+		return array_map(function($filename) {
+			return substr(basename($filename), 0, -4);
+		}, glob(storage_path('framework/trans/*.php')));
+	}
+
+	protected function sourcedLocales() {
 		return array_map('basename', glob(resource_path('lang/*')));
 	}
 
@@ -90,7 +97,7 @@ class TranslationsLoader implements LoaderContract {
 	}
 
 	public function uncacheAll() {
-		foreach ($this->locales() as $locale) {
+		foreach ($this->cachedLocales() as $locale) {
 			$this->uncache($locale);
 		}
 	}
@@ -114,6 +121,8 @@ class TranslationsLoader implements LoaderContract {
 	}
 
 	public function sourceToDb($locale) {
+		$locale = basename($locale);
+
 		$source = [];
 		foreach (glob(resource_path("lang/$locale/*.php")) as $file) {
 			$group = substr(basename($file), 0, -4);
@@ -150,7 +159,7 @@ class TranslationsLoader implements LoaderContract {
 
 	public function allSourceToDb() {
 		$result = [];
-		foreach ($this->locales() as $locale) {
+		foreach ($this->sourcedLocales() as $locale) {
 			$result[$locale] = $this->sourceToDb($locale);
 		}
 
