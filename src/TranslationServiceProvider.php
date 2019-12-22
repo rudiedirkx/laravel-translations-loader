@@ -2,11 +2,9 @@
 
 namespace rdx\transloader;
 
-use Illuminate\Translation\TranslationServiceProvider as BaseProvider;
+use Illuminate\Support\ServiceProvider;
 
-class TranslationServiceProvider extends BaseProvider {
-
-	protected $defer = false;
+class TranslationServiceProvider extends ServiceProvider {
 
 	/**
 	 * Register the service provider.
@@ -56,10 +54,6 @@ class TranslationServiceProvider extends BaseProvider {
 		});
 
 		$this->app->alias('translation.loader', TranslationsLoader::class);
-	}
-
-	public function provides() {
-		return [];
 	}
 
 }
