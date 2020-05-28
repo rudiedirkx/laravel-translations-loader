@@ -85,6 +85,20 @@ class TranslationsLoader implements LoaderContract {
 		$this->db->query()->from($this->table)->updateOrInsert($unique, compact('value'));
 	}
 
+	public function delete($locale, $group, $name) {
+		$unique = compact('locale', 'group', 'name');
+		$this->db->query()->from($this->table)->where($unique)->delete();
+	}
+
+	public function saveOrDelete($locale, $group, $name, $value) {
+		if ($value === '') {
+			$this->delete($locale, $group, $name);
+		}
+		else {
+			$this->save($locale, $group, $name, $value);
+		}
+	}
+
 	public function clear() {
 		$this->db->query()->from($this->table)->delete();
 	}
