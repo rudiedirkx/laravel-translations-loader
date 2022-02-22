@@ -12,12 +12,17 @@ class SyncCommand extends Command {
 	protected $description = 'Sync translations to db';
 
 	public function handle(TranslationsLoader $loader) {
+		$logging = \DB::logging();
+		\DB::disableQueryLog();
+
 		$clear = $this->option('clear');
 		if ($clear) {
 			$loader->clear();
 		}
 
 		$result = $loader->sync();
+
+		$logging and \DB::enableQueryLog();
 
 		print_r($result);
 	}

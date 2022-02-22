@@ -51,8 +51,8 @@ class TranslationsLoader implements LoaderContract {
 		return $output;
 	}
 
-	protected function addToDb($locale, $group, $name, $value) {
-		$this->db->query()->from($this->table)->insert(compact('locale', 'group', 'name', 'value'));
+	protected function addsToDb(array $records) {
+		$this->db->query()->from($this->table)->insert($records);
 	}
 
 	protected function deleteFromDb($locale, $group, $name) {
@@ -146,27 +146,32 @@ class TranslationsLoader implements LoaderContract {
 
 		$db = $this->fromDb($locale);
 
-		// Missing in db
-		$added = 0;
-		foreach ($source as $group => $translations) {
-			foreach ($translations as $key => $translation) {
-				if (!isset($db[$group][$key])) {
-					$this->addToDb($locale, $group, $key, $translation);
-					$added++;
+		[$added, $deleted] = \DB::transaction(function() use ($source, $db, $locale) {
+			// Missing in db
+			$add = [];
+			foreach ($source as $group => $translations) {
+				foreach ($translations as $name => $value) {
+					if (!isset($db[$group][$name])) {
+						$add[] = compact('locale', 'group', 'name', 'value');
+					}
 				}
 			}
-		}
+			foreach (array_chunk($add, 100) as $chunk) {
+				$this->addsToDb($chunk);
+			}
 
-		// Old in db
-		$deleted = 0;
-		foreach ($db as $group => $translations) {
-			foreach ($translations as $key => $translation) {
-				if (!isset($source[$group][$key])) {
-					$this->deleteFromDb($locale, $group, $key);
-					$deleted++;
+			// Old in db
+			$deleted = 0;
+			foreach ($db as $group => $translations) {
+				foreach ($translations as $name => $value) {
+					if (!isset($source[$group][$name])) {
+						$this->deleteFromDb($locale, $group, $name);
+						$deleted++;
+					}
 				}
 			}
-		}
+			return [count($add), $deleted];
+		});
 
 		return compact('added', 'deleted');
 	}
