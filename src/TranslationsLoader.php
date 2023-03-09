@@ -8,17 +8,21 @@ use Illuminate\Database\Connection;
 class TranslationsLoader implements LoaderContract {
 
 	protected $db;
+	protected $config;
 
 	protected $table = 'translations';
 	protected $translations = [];
 
-	public function __construct(Connection $db) {
+	public function __construct(array $config, Connection $db) {
+		$this->config = $config;
 		$this->db = $db;
 	}
 
 
 
 	protected function fromDb($locale) {
+		$dontLoad = $this->config['dont_load_translations'] ?? [];
+
 		$query = $this->db->query()
 			->select('group', 'name', 'value')
 			->from($this->table)
@@ -26,7 +30,9 @@ class TranslationsLoader implements LoaderContract {
 
 		$translations = [];
 		foreach ($query->get() as $trans) {
-			$translations[$trans->group][$trans->name] = $trans->value;
+			if (!in_array($trans->value, $dontLoad, true)) {
+				$translations[$trans->group][$trans->name] = $trans->value;
+			}
 		}
 
 		return $translations;

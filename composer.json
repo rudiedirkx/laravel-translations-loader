@@ -14,5 +14,7 @@
             "rdx\\transloader\\": "src/"
         }
     },
-    "require": {}
+    "require": {
+    	"laravel/framework": "^8.0"
+    }
 }

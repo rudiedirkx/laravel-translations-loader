@@ -11,7 +11,8 @@ class TranslationServiceProvider extends ServiceProvider {
 	 */
 	public function register() {
 		$this->app->instance('translator.class', Translator::class);
-		$this->app->instance('translation.loader.class', TranslationsLoader::class);
+
+		$this->app->when(TranslationsLoader::class)->needs('$config')->giveConfig('translations-loader');
 
 		$this->registerLoader();
 
@@ -30,6 +31,8 @@ class TranslationServiceProvider extends ServiceProvider {
 			return $trans;
 		});
 
+		$this->mergeConfigFrom(dirname(__DIR__, 1) . '/config/config.php', 'translations-loader');
+
 		$this->commands([
 			SyncCommand::class,
 		]);
@@ -40,17 +43,20 @@ class TranslationServiceProvider extends ServiceProvider {
 	 */
 	public function boot() {
 		$this->publishes([
-			__DIR__ . '/../migrations/' => database_path('migrations'),
+			dirname(__DIR__, 1) . '/migrations/' => database_path('migrations'),
 		], 'migrations');
+
+		$this->publishes([
+			dirname(__DIR__, 1) . '/config/config.php' => config_path('translations-loader.php')
+		]);
 	}
 
 	/**
 	 * Register the translation line loader.
 	 */
 	protected function registerLoader() {
-		$this->app->singleton('translation.loader', function ($app) {
-			$class = $app['translation.loader.class'];
-			return new $class($app['db.connection']);
+		$this->app->singleton('translation.loader', function($app) {
+			return $app->build(TranslationsLoader::class);
 		});
 
 		$this->app->alias('translation.loader', TranslationsLoader::class);
