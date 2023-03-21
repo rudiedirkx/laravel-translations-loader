@@ -4,6 +4,7 @@ namespace rdx\transloader;
 
 use Illuminate\Contracts\Translation\Loader as LoaderContract;
 use Illuminate\Database\Connection;
+use Illuminate\Database\Query\Builder;
 
 class TranslationsLoader implements LoaderContract {
 
@@ -20,12 +21,11 @@ class TranslationsLoader implements LoaderContract {
 
 
 
-	protected function fromDb($locale) {
+	protected function fromDb(string $locale) : array {
 		$dontLoad = $this->config['dont_load_translations'] ?? [];
 
-		$query = $this->db->query()
+		$query = $this->query()
 			->select('group', 'name', 'value')
-			->from($this->table)
 			->where('locale', $locale);
 
 		$translations = [];
@@ -38,7 +38,7 @@ class TranslationsLoader implements LoaderContract {
 		return $translations;
 	}
 
-	protected function flattenSource($list) {
+	protected function flattenSource(array $list) : array {
 		$output = [];
 
 		$add = function($list, $prefix = []) use (&$add, &$output) {
@@ -57,56 +57,91 @@ class TranslationsLoader implements LoaderContract {
 		return $output;
 	}
 
-	protected function addsToDb(array $records) {
-		$this->db->query()->from($this->table)->insert($records);
+	public function query() : Builder {
+		return $this->db->query()->from($this->table);
 	}
 
-	protected function deleteFromDb($locale, $group, $name) {
-		$this->db->query()->from($this->table)->where(compact('locale', 'group', 'name'))->delete();
+	public function addsToDb(array $records) : void {
+		$this->query()->insert($records);
 	}
 
-	protected function path($locale) {
+	protected function deleteFromDb(string $locale, string $group, string $name) : void {
+		$this->query()->where(compact('locale', 'group', 'name'))->delete();
+	}
+
+	protected function path(string $locale) : string {
 		$locale = basename($locale);
 		return storage_path("framework/trans/$locale.php");
 	}
 
-	protected function cachedLocales() {
+	protected function cachedLocales() : array {
 		return array_map(function($filename) {
 			return substr(basename($filename), 0, -4);
 		}, glob(storage_path('framework/trans/*.php')));
 	}
 
-	protected function sourcedLocales() {
+	protected function sourcedLocales() : array {
 		return array_map('basename', glob(resource_path('lang/*')));
 	}
 
 
 
-	public function count($locale) {
-		return $this->db->query()->from($this->table)->where('locale', $locale)->count();
+	public function count(string $locale) : int {
+		return $this->query()->where('locale', $locale)->count();
 	}
 
-	public function save($locale, $group, $name, $value) {
-		$unique = compact('locale', 'group', 'name');
-		$this->db->query()->from($this->table)->updateOrInsert($unique, compact('value'));
+	protected function insert(string $locale, string $group, string $name, string $value) : void {
+		$this->query()->insert(compact('locale', 'group', 'name', 'value'));
 	}
 
-	public function delete($locale, $group, $name) {
-		$unique = compact('locale', 'group', 'name');
-		$this->db->query()->from($this->table)->where($unique)->delete();
+	protected function update(string $locale, string $group, string $name, string $value) : void {
+		$this->query()->where(compact('locale', 'group', 'name'))->update(compact('value'));
 	}
 
-	public function saveOrDelete($locale, $group, $name, $value) {
+	public function save(string $locale, string $group, string $name, string $value) : bool {
+		$curValue = $this->getTranslation($locale, $group, $name);
+		if ($curValue === null) {
+			$this->insert($locale, $group, $name, $value);
+			return true;
+		}
+		elseif ($curValue !== $value) {
+			$this->update($locale, $group, $name, $value);
+			return true;
+		}
+		return false;
+	}
+
+	public function saveIfEmpty(string $locale, string $group, string $name, string $value) : bool {
+		$curValue = $this->getTranslation($locale, $group, $name);
+		if ($curValue === null) {
+			$this->insert($locale, $group, $name, $value);
+			return true;
+		}
+		return false;
+	}
+
+	public function saveOrDelete(string $locale, string $group, string $name, string $value) : bool {
 		if ($value === '') {
-			$this->delete($locale, $group, $name);
+			return $this->delete($locale, $group, $name);
 		}
 		else {
-			$this->save($locale, $group, $name, $value);
+			return $this->save($locale, $group, $name, $value);
 		}
+	}
+
+	public function delete(string $locale, string $group, string $name) : bool {
+		$unique = compact('locale', 'group', 'name');
+		return $this->query()->where($unique)->delete() > 0;
+	}
+
+	public function getTranslation(string $locale, string $group, string $name) : ?string {
+		$unique = compact('locale', 'group', 'name');
+		$curRecord = $this->query()->where($unique)->first('value');
+		return $curRecord ? $curRecord->value : null;
 	}
 
 	public function clear() {
-		$this->db->query()->from($this->table)->delete();
+		$this->query()->delete();
 	}
 
 	public function sync() {
@@ -122,13 +157,13 @@ class TranslationsLoader implements LoaderContract {
 		}
 	}
 
-	public function uncache($locale) {
+	public function uncache(string $locale) {
 		if (file_exists($file = $this->path($locale))) {
 			unlink($file);
 		}
 	}
 
-	public function dbToCache($locale) {
+	public function dbToCache(string $locale) {
 		$translations = $this->fromDb($locale);
 
 		$file = $this->path($locale);
@@ -140,7 +175,7 @@ class TranslationsLoader implements LoaderContract {
 		return $translations;
 	}
 
-	public function sourceToDb($locale) {
+	public function sourceToDb(string $locale) {
 		$locale = basename($locale);
 
 		$source = [];
@@ -190,6 +225,8 @@ class TranslationsLoader implements LoaderContract {
 
 		return $result;
 	}
+
+
 
 	/**
 	 * Load the messages for the given locale.
