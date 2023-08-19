@@ -144,8 +144,31 @@ class TranslationsLoader implements LoaderContract {
 		$this->query()->delete();
 	}
 
+	protected function deleteStaleFromDb(array $baseLocales) : int {
+		$fullkeys = array_column(\DB::select("
+			select distinct concat(`group`, '.', name) fullkey
+			from translations
+			where concat(`group`, '.', name) not in (
+				select concat(`group`, '.', name) fullkey
+				from translations
+				where locale in ('en', 'nl')
+			)
+		"), 'fullkey');
+
+		if (count($fullkeys)) {
+			$placeholders = implode(', ', array_fill(0, count($fullkeys), '?'));
+			return \DB::delete("
+				delete from translations
+				where concat(`group`, '.', name) in ($placeholders)
+			", $fullkeys);
+		}
+
+		return 0;
+	}
+
 	public function sync() {
 		$result = $this->allSourceToDb();
+		$result['__']['stale'] = $this->deleteStaleFromDb($this->sourcedLocales());
 		$this->uncacheAll();
 
 		return $result;
