@@ -34,6 +34,7 @@ class TranslationServiceProvider extends ServiceProvider {
 		$this->mergeConfigFrom(dirname(__DIR__, 1) . '/config/config.php', 'translations-loader');
 
 		$this->commands([
+			CompareCommand::class,
 			SyncCommand::class,
 		]);
 	}
