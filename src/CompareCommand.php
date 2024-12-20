@@ -32,7 +32,24 @@ class CompareCommand extends Command {
 			echo "\n";
 		}
 
-		return $missingAny ? 1 : 0;
+		if ($missingAny) {
+			return 1;
+		}
+
+		$differentOrderAny = false;
+		foreach ($langKeys as $lang => $keys) {
+			if ($firstDifferentKey = $this->findFirstOrderDifference($allKeys, $keys)) {
+				$differentOrderAny = true;
+				echo "But in different order in `$lang`:\n";
+				echo "- $firstDifferentKey\n";
+			}
+		}
+
+		if ($differentOrderAny) {
+			return 2;
+		}
+
+		return 0;
 	}
 
 	/**
@@ -76,7 +93,7 @@ class CompareCommand extends Command {
 	}
 
 	/**
-	 * @param AssocArray $dimensional
+	 * @param array<string, mixed> $dimensional
 	 * @return list<string>
 	 */
 	protected function flattenKeys(string $prefix, array $dimensional) : array {
@@ -91,6 +108,20 @@ class CompareCommand extends Command {
 		}
 
 		return $flat;
+	}
+
+	/**
+	 * @param list<string> $allKeys
+	 * @param list<string> $langKeys
+	 */
+	protected function findFirstOrderDifference(array $allKeys, array $langKeys) : ?string {
+		foreach ($allKeys as $i => $key) {
+			if ($key !== ($langKeys[$i] ?? null)) {
+				return $langKeys[$i] ?? $key;
+			}
+		}
+
+		return null;
 	}
 
 }
