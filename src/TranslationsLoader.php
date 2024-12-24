@@ -8,18 +8,22 @@ use Illuminate\Database\Query\Builder;
 
 class TranslationsLoader implements LoaderContract {
 
-	protected $db;
-	protected $config;
+	protected Connection $db;
+	protected array $config;
 
-	protected $table = 'translations';
-	protected $translations = [];
+	protected bool $enabled = true;
+
+	protected string $table = 'translations';
+	protected array $translations = [];
 
 	public function __construct(array $config, Connection $db) {
 		$this->config = $config;
 		$this->db = $db;
 	}
 
-
+	public function disable() : void {
+		$this->enabled = false;
+	}
 
 	protected function fromDb(string $locale) : array {
 		$dontLoad = $this->config['dont_load_translations'] ?? [];
@@ -198,15 +202,20 @@ class TranslationsLoader implements LoaderContract {
 		return $translations;
 	}
 
-	public function sourceToDb(string $locale) {
-		$locale = basename($locale);
-
+	protected function getSource(string $locale) {
 		$source = [];
 		foreach (glob(resource_path("lang/$locale/*.php")) as $file) {
 			$group = substr(basename($file), 0, -4);
 
 			$source[$group] = $this->flattenSource(require $file);
 		}
+		return $source;
+	}
+
+	public function sourceToDb(string $locale) {
+		$locale = basename($locale);
+
+		$source = $this->getSource($locale);
 
 		$db = $this->fromDb($locale);
 
@@ -257,6 +266,11 @@ class TranslationsLoader implements LoaderContract {
 	public function load($locale, $group, $namespace = null) {
 		// Load from memory
 		if (isset($this->translations[$locale])) {
+			return $this->translations[$locale][$group] ?? [];
+		}
+
+		if (!$this->enabled) {
+			$this->translations[$locale] = $this->getSource($locale);
 			return $this->translations[$locale][$group] ?? [];
 		}
 
