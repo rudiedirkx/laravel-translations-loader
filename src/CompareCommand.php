@@ -6,7 +6,9 @@ use Illuminate\Console\Command;
 
 class CompareCommand extends Command {
 
-	protected $signature = 'translation:compare';
+	protected $signature = 'translation:compare
+		{--dump : Dump all full composed keys}
+	';
 
 	protected $description = 'Compare lang files structures';
 
@@ -22,6 +24,13 @@ class CompareCommand extends Command {
 		}
 
 		$allKeys = array_values(array_unique($allKeys));
+
+		if ($this->option('dump')) {
+			natcasesort($allKeys);
+			echo implode("\n", $allKeys) . "\n";
+
+			return 0;
+		}
 
 		$missingAny = false;
 		foreach ($langKeys as $lang => $keys) {
